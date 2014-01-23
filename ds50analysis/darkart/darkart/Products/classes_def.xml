@@ -1,0 +1,132 @@
+<!--
+This file instructs the ROOT tools what code needs to be
+generated. 
+
+1. Add a <class name=... /> line for the class you have just 
+   introduced, and for any new class you have defined and have 
+   used as a data member for your new class.
+2. If your data product is to be a std::vector of your newly-
+   invented type, add a <class name=.../> line for that vector 
+   type.
+3. For every data type prod to be used as top-level data product 
+   (put directly into the art::Event), add a <class name=.../> 
+   line for art::Wrapper<prod>.
+4. Make sure to add entries for any new art::Assns you create.
+
+For most new products, you may mimic the pattern of the BaselineData
+objects below. Some of the entries are not strictly necessary, 
+but add all 4 entries anyway in order to avoid possibly nasty
+debugging situations.
+
+
+-->
+
+
+<lcgdict>
+
+  <class name="std::vector<std::pair<double,double> >"/>
+
+  <class name="darkart::EventInfo"/>
+  <class name="art::Wrapper<darkart::EventInfo>"/>
+
+  <class name="darkart::Channel"/>
+  <class name="art::Wrapper<darkart::Channel>"/>
+  <class name="std::vector<darkart::Channel>"/>
+  <class name="art::Wrapper<std::vector<darkart::Channel> >"/>
+
+  <class name="darkart::Channel::ChannelID"/>
+  <class name="art::Wrapper<darkart::Channel::ChannelID>"/>
+
+  <class name="darkart::Waveform"/>
+  <class name="art::Wrapper<darkart::Waveform>"/>
+  <class name="std::vector<darkart::Waveform>"/>
+  <class name="art::Wrapper<std::vector<darkart::Waveform> >"/>
+  <class name="darkart::WaveformAssns"/>
+  <class name="art::Wrapper<darkart::WaveformAssns>"/>
+  
+  <class name="darkart::WaveformInfo"/>
+  <class name="art::Wrapper<darkart::WaveformInfo>"/>
+  <class name="std::vector<darkart::WaveformInfo>"/>
+  <class name="art::Wrapper<std::vector<darkart::WaveformInfo> >"/>
+  <class name="darkart::WaveformInfoAssns"/>
+  <class name="art::Wrapper<darkart::WaveformInfoAssns>"/>
+
+  <class name="darkart::Pmt"/>
+  <class name="art::Wrapper<darkart::Pmt>"/>
+  <class name="std::vector<darkart::Pmt>"/>
+  <class name="art::Wrapper<std::vector<darkart::Pmt> >"/>
+
+  <class name="darkart::Baseline"/>
+  <class name="art::Wrapper<darkart::Baseline>"/>
+  <class name="std::vector<darkart::Baseline>"/>
+  <class name="art::Wrapper<std::vector<darkart::Baseline> >"/>
+  <class name="darkart::BaselineAssns"/>
+  <class name="art::Wrapper<darkart::BaselineAssns>"/>
+
+  <class name="darkart::Roi"/>
+  <class name="art::Wrapper<darkart::Roi>"/>
+  <class name="std::vector<darkart::Roi>"/>
+  <class name="art::Wrapper<std::vector<darkart::Roi> >"/>
+  <class name="darkart::RoiAssns"/>
+  <class name="art::Wrapper<darkart::RoiAssns>"/>
+ 
+  <class name="darkart::Pulse"/>
+  <class name="art::Wrapper<darkart::Pulse>"/>
+  <class name="std::vector<darkart::Pulse>"/>
+  <class name="art::Wrapper<std::vector<darkart::Pulse> >"/>
+  <class name="darkart::PulseAssns"/>
+  <class name="art::Wrapper<darkart::PulseAssns>"/>
+
+  <class name="darkart::Pulse::PulseID"/>
+  <class name="art::Wrapper<darkart::Pulse::PulseID>"/>
+
+  <class name="darkart::PulseParam"/>
+  <class name="art::Wrapper<darkart::PulseParam>"/>
+  <class name="std::vector<darkart::PulseParam>"/>
+  <class name="art::Wrapper<std::vector<darkart::PulseParam> >"/>
+  <class name="darkart::PulseParamAssns"/>
+  <class name="art::Wrapper<darkart::PulseParamAssns>"/>
+
+  <class name="darkart::PositionParam"/>
+  <class name="art::Wrapper<darkart::PositionParam>"/>
+  <class name="std::vector<darkart::PositionParam>"/>
+  <class name="art::Wrapper<std::vector<darkart::PositionParam> >"/>
+  <class name="darkart::PositionParamAssns"/>
+  <class name="art::Wrapper<darkart::PositionParamAssns>"/>
+ 
+  <class name="darkart::Spe"/>
+  <class name="art::Wrapper<darkart::Spe>"/>
+  <class name="std::vector<darkart::Spe>"/>
+  <class name="art::Wrapper<std::vector<darkart::Spe> >"/>
+  <class name="darkart::SpeAssns"/>
+  <class name="art::Wrapper<darkart::SpeAssns>"/>
+
+  <class name="darkart::VetoTDCHit"/>
+  <class name="std::vector<darkart::VetoTDCHit>"/>
+  <class name="darkart::VetoTruth"/>
+  <class name="art::Wrapper<darkart::VetoTruth>"/>
+
+  <class name="darkart::LaserSpectrum"/>
+  <class name="darkart::LaserResultsData"/>
+  <class name="darkart::LaserResults"/>
+  <class name="art::Wrapper<darkart::LaserResults>"/>
+  <class name="art::Wrapper<darkart::LaserSpectrum>"/>
+  <class name="cet::map_vector<darkart::LaserSpectrum*>"/>
+  <class name="art::Wrapper<cet::map_vector<darkart::LaserSpectrum*> >"/>
+  <class name="std::vector<std::pair<cet::map_vector_key,darkart::LaserSpectrum*> >"/>
+  <class name="art::Wrapper<std::vector<std::pair<cet::map_vector_key,darkart::LaserSpectrum*> > >"/>
+  <class name="std::pair<cet::map_vector_key,darkart::LaserSpectrum*> "/>
+  <class name="art::Wrapper<std::pair<cet::map_vector_key,darkart::LaserSpectrum*> >"/>
+  <class name="TH1F"/>
+
+
+  <class name="darkart::PulseData"/>
+  <class name="std::vector<darkart::PulseData>"/>
+
+  <class name="darkart::ChannelData"/>
+  <class name="std::vector<darkart::ChannelData>"/>
+
+  <class name="darkart::EventData"/>
+  <class name="art::Wrapper<darkart::EventData>"/>
+
+</lcgdict>
