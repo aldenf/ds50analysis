@@ -39,9 +39,9 @@ void analysis() {
   TChain* tpc_chain = new TChain("treeBuilder/Events");
   string tpc_path = "/ds50/data/test_processing/darkart_release3/Run";
   std::vector<int> run_id_list;
-  run_id_list.push_back(5370);
+  //run_id_list.push_back(5370);
   run_id_list.push_back(5372);
-  run_id_list.push_back(5373);
+  //run_id_list.push_back(5373);
 
   std::cout<<"WARNING: Database access disabled ! Make sure to check run list manually on the ELOG"<<std::endl;
   std::ostringstream os;
@@ -72,9 +72,11 @@ void analysis(TString Inputfilelist, TString outFileName) {
 void LoopOverChain(TChain* tpc_chain, TString outFileName)
 {
   const Double_t t_drift_min = 10.; //[us]
-  const Double_t t_drift_max = 376.; //[us]
+  const Double_t t_drift_max = 373.3; //[us]
   const Double_t t_drift_delta = 10; //[us]
-  const Double_t electron_lifetime = 3330; //[us]
+  const Double_t t_s2_s3_sep = 381.; //[us]
+  const Double_t t_s2_s3_sep_width = 9.; //[us]
+  const Double_t electron_lifetime = 3338; //[us]
   const Int_t N_CHANNELS = 38;
     
   Int_t tpc_events = tpc_chain->GetEntries();
@@ -125,7 +127,6 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
   TH2F* logs2s1_corr_s1_corr_hist   = new TH2F("s2s1_corr_s1_corr_hist", "Log(S2/S1) vs S1 S1 (corrected for z-dependence)",
                                                1000, 0, 6000, 200, -1, 3);
   TH1F* total_livetime              = new TH1F("total_livetime", "total_livetime", 1, 0, 1);
-  TH1F* max_s2_chan_hist            = new TH1F("max_s2_chan_hist", "Max S2 channels", 100, 0, 50);
 
   const int n_hists = 40;
   TH2F** logs2s1_corr_f90_hist = new TH2F*[n_hists];
@@ -187,7 +188,7 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
         
       //PULSE IDENTIFICATION
       Int_t n_phys_pulses = -1, s1_pulse_id = -1, s2_pulse_id = -1;
-      ds50analysis::identify_pulses(event, n_phys_pulses, s1_pulse_id, s2_pulse_id, t_drift_max, t_drift_delta);
+      ds50analysis::identify_pulses(event, n_phys_pulses, s1_pulse_id, s2_pulse_id, t_s2_s3_sep, t_s2_s3_sep_width);
 
       
       //Make sure there are 2 pulses
@@ -241,17 +242,11 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
       if (total_f90 < 0.1)
         continue;
         
-      //Remove events concentrated on a single PMT
-      if (max_s1/total_s1 > 0.4)
-        continue;
-        
       //Remove events near grid or cathode
       if (t_drift < t_drift_min || t_drift > t_drift_max - t_drift_delta)
         continue;
         
-        
-        
-        
+              
       if (total_f90 > (0.45 + 0.5*TMath::Exp(-total_s1/50)) && total_s1 > 40 && total_s1 < 6000)
         {
           outfile<<"Run: "<<event->event_info.run_id<<" Event: "<<event->event_info.event_id<<std::endl;
@@ -304,7 +299,7 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
       t_drift_s1_corr_hist        ->Fill(total_s1_corr, t_drift);
       logs2s1_corr_s1_corr_hist   ->Fill(total_s1_corr, TMath::Log10(s2_over_s1_corr));
       s2_s1_corr_hist             ->Fill(total_s1_corr, total_s2_corr);
-      max_s2_chan_hist            ->Fill(max_s2_chan);
+
     }//End loop over events
     
   std::cout<<"Run time: "<<LivetimeTotal+InhibitTimeTotal
@@ -333,9 +328,8 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
   max_frac_s1_hist->Write();
   s1_max_peak_time_hist->Write();
   max_frac_max_peak_time_hist->Write();
-  logs2s1_corr_s1_corr_hist->Write();
   total_livetime->Write();
-  max_s2_chan_hist->Write();
+  logs2s1_corr_s1_corr_hist->Write();
   for (int j = 0; j < n_hists; j++)
     {
       logs2s1_corr_f90_hist[j]->Write();
