@@ -1,8 +1,10 @@
-TARGET = analysis_jan2014note
+#TARGET = analysis_jan2014note
 #TARGET = ds50s2studies
+TARGET = merge
 #DEP=$(TARGET:.out=.d)
-SRCS = analysis_jan2014note.C
+#SRCS = analysis_jan2014note.C
 #SRCS = ds50s2studies.C
+SRCS = merge.C
 DICTNAME = DarkArtDict
 #DARKARTDIR = ../darkart/Products
 #DARKARTHEADERS = $(DARKARTDIR)/EventInfo.hh $(DARKARTDIR)/Channel.hh $(DARKARTDIR)/Baseline.hh $(DARKARTDIR)/Pmt.hh $(DARKARTDIR)/WaveformInfo.hh $(DARKARTDIR)/Pulse.hh $(DARKARTDIR)/PulseParam.hh $(DARKARTDIR)/Roi.hh $(DARKARTDIR)/Spe.hh

@@ -46,12 +46,6 @@ namespace ds50analysis {
                  Int_t & max_s1_chan, Double_t & max_s1,
                  Int_t & max_s2_chan, Double_t & max_s2);
 
-  
-  // xy barycenter is not yet done in DarkArt, so do it here.
-  void barycenter(EventData* event, Int_t const s2_pulse_id,
-                  Double_t & xpos, Double_t & ypos,
-                  Double_t const* pmt_xpos, Double_t const* pmt_ypos,
-                  Int_t const* topChannels);
 
   // Cut on large max_s1_frac. Threshold is defined bin by bin.
   Bool_t large_max_s1_frac(Double_t const total_s1, Double_t const t_drift, Double_t const max_s1);
@@ -64,20 +58,17 @@ namespace ds50analysis {
 
 Double_t ds50analysis::s1_corr_factor(Double_t t_drift_max, Double_t t_drift)
 {
-  Double_t t_drift_ratio = t_drift/(0.5*t_drift_max); // note normalization is to 0.5*t_drift_max
-  // looked at Kr peaks in 25us drift-time windows (Run5330+5340), and fit these to [0]*t_drift_ratio^2 + [1]*t_drift_ratio + [2].
-  /* Old Values
-  Double_t fit_par0 = 4.458;
-  Double_t fit_par1 = 9.805;
-  Double_t fit_par2 = 281.2;
-  */
-  Double_t fit_par0 = 2.475; 
-  Double_t fit_par1 = 14.920;
-  Double_t fit_par2 = 272.58;
-
+  Double_t z = t_drift/(0.5*t_drift_max); // note normalization is to 0.5*t_drift_max
+  // looked at Kr peaks in 15us t_drift windows (Run5330+5340), and fit these to [0]*z^5 + [1]*z^4 + [2]*z^3+[3]*z^2+[4]*z+[5].
+  Double_t fit_par0 = 0.0407; 
+  Double_t fit_par1 = -0.206;
+  Double_t fit_par2 = 0.407;
+  Double_t fit_par3 = -0.389;
+  Double_t fit_par4 = 0.247;
+  Double_t fit_par5 = 0.898;
   // normalizing all points on fitted curve to expected Kr peak at t_drift_max/2
-  Double_t exp_Kr_peak_at_half_t_drift_max = fit_par0 + fit_par1 + fit_par2;
-  Double_t exp_Kr_peak_at_t_drift = fit_par0*t_drift_ratio*t_drift_ratio + fit_par1*t_drift_ratio + fit_par2;
+  Double_t exp_Kr_peak_at_half_t_drift_max = fit_par0 + fit_par1 + fit_par2 + fit_par3 + fit_par4 + fit_par5;
+  Double_t exp_Kr_peak_at_t_drift = fit_par0*z*z*z*z*z + fit_par1*z*z*z*z + fit_par2*z*z*z + fit_par3*z*z + fit_par4*z + fit_par5;
   return exp_Kr_peak_at_half_t_drift_max/exp_Kr_peak_at_t_drift; // s1 correction factor
 }
 
@@ -146,41 +137,6 @@ void ds50analysis::max_s1_s2(EventData* event, Int_t const s1_pulse_id, Int_t co
 
 
 
-
-void ds50analysis::barycenter(EventData* event, Int_t const s2_pulse_id,
-                              Double_t & xpos, Double_t & ypos,
-                              Double_t const* pmt_xpos, Double_t const* pmt_ypos,
-                              Int_t const* topChannels)
-{
-  xpos = 0;
-  ypos = 0;
-  Double_t total_s2_top = 0;
-  const Int_t nchans = event->channels.size();
-  for (Int_t ch = 0; ch < nchans; ch++)
-    {
-      ChannelData const& channel = event->getChannelByID(ch);
-      if (channel.channel.channel_id()>=19)
-        {
-          total_s2_top += -channel.pulses[s2_pulse_id].param.fixed_int2 / channel.pmt.spe_mean;
-          for (Int_t j=0; j<19; j++)
-            {
-              if (topChannels[j] == channel.channel.channel_id())
-                {
-                  xpos += pmt_xpos[j] * -channel.pulses[s2_pulse_id].param.fixed_int2 / channel.pmt.spe_mean;
-                  ypos += pmt_ypos[j] * -channel.pulses[s2_pulse_id].param.fixed_int2 / channel.pmt.spe_mean;
-                    
-                  break;
-                }
-            }
-        }
-
-    }//end loop over channels
-  xpos /= total_s2_top;
-  ypos /= total_s2_top;
-
-}
-
-
 Bool_t ds50analysis::large_max_s1_frac(Double_t const total_s1, Double_t const t_drift, Double_t const max_s1)
 {
 
@@ -225,6 +181,12 @@ Bool_t ds50analysis::large_max_s1_frac(Double_t const total_s1, Double_t const t
      {0.519, 0.499, 0.482, 0.468, 0.455, 0.443, 0.433, 0.424, 0.415, 0.407, 0.4, 0.394, 0.388, 0.382, 0.377, 0.372, 0.367, 0.363, 0.359, 0.355, 0.352, 0.348, 0.345, 0.342, 0.339, 0.336, 0.334, 0.331, 0.329, 0.326, 0.324, 0.322, 0.32, 0.318, 0.316, 0.314, 0.312, 0.31, 0.309, 0.307, 0.305, 0.304, 0.302, 0.301, 0.3, 0.298, 0.297, 0.296, 0.294, 0.293, 0.292, 0.291, 0.29, 0.289, 0.287, 0.286, 0.285, 0.284, 0.283, 0.282, 0.282, 0.281, 0.28, 0.279, 0.278, 0.277, 0.276, 0.276, 0.275, 0.274, 0.273, 0.273, 0.272, 0.271, 0.27, 0.27, 0.269, 0.268, 0.268, 0.267, 0.266, 0.266, 0.265, 0.265, 0.264, 0.263, 0.263, 0.262, 0.262, 0.261, 0.261, 0.26, 0.26, 0.259, 0.259, 0.258, 0.258, 0.257, 0.257, 0.256, 0.256, 0.255, 0.255, 0.254, 0.254, 0.254, 0.253, 0.253, 0.252, 0.252 },
      {0.563, 0.543, 0.526, 0.511, 0.498, 0.486, 0.476, 0.466, 0.458, 0.45, 0.443, 0.436, 0.43, 0.424, 0.419, 0.414, 0.409, 0.405, 0.401, 0.397, 0.393, 0.389, 0.386, 0.383, 0.38, 0.377, 0.374, 0.371, 0.369, 0.366, 0.364, 0.362, 0.36, 0.358, 0.356, 0.354, 0.352, 0.35, 0.348, 0.346, 0.345, 0.343, 0.342, 0.34, 0.339, 0.337, 0.336, 0.335, 0.333, 0.332, 0.331, 0.329, 0.328, 0.327, 0.326, 0.325, 0.324, 0.323, 0.322, 0.321, 0.32, 0.319, 0.318, 0.317, 0.316, 0.315, 0.314, 0.314, 0.313, 0.312, 0.311, 0.31, 0.31, 0.309, 0.308, 0.307, 0.307, 0.306, 0.305, 0.305, 0.304, 0.303, 0.303, 0.302, 0.301, 0.301, 0.3, 0.3, 0.299, 0.298, 0.298, 0.297, 0.297, 0.296, 0.296, 0.295, 0.295, 0.294, 0.294, 0.293, 0.293, 0.292, 0.292, 0.291, 0.291, 0.29, 0.29, 0.289, 0.289, 0.289}};
 
+  // 10us is too wide for last couple drift time slices. Use 5 us slices.
+  double max_s1_frac_tdrift_350_370us_thresholds[4][110] =
+    {{0.506, 0.487, 0.47, 0.455, 0.442, 0.431, 0.421, 0.411, 0.403, 0.395, 0.388, 0.382, 0.376, 0.37, 0.365, 0.36, 0.355, 0.351, 0.347, 0.343, 0.34, 0.336, 0.333, 0.33, 0.327, 0.325, 0.322, 0.319, 0.317, 0.315, 0.312, 0.31, 0.308, 0.306, 0.304, 0.302, 0.301, 0.299, 0.297, 0.296, 0.294, 0.293, 0.291, 0.29, 0.288, 0.287, 0.286, 0.284, 0.283, 0.282, 0.281, 0.28, 0.279, 0.278, 0.277, 0.275, 0.274, 0.273, 0.273, 0.272, 0.271, 0.27, 0.269, 0.268, 0.267, 0.266, 0.266, 0.265, 0.264, 0.263, 0.263, 0.262, 0.261, 0.26, 0.26, 0.259, 0.258, 0.258, 0.257, 0.256, 0.256, 0.255, 0.255, 0.254, 0.253, 0.253, 0.252, 0.252, 0.251, 0.251, 0.25, 0.25, 0.249, 0.249, 0.248, 0.248, 0.247, 0.247, 0.246, 0.246, 0.245, 0.245, 0.244, 0.244, 0.244, 0.243, 0.243, 0.242, 0.242, 0.242 },
+     {0.527, 0.508, 0.491, 0.476, 0.463, 0.452, 0.441, 0.432, 0.423, 0.416, 0.408, 0.402, 0.396, 0.39, 0.385, 0.38, 0.375, 0.371, 0.367, 0.363, 0.36, 0.356, 0.353, 0.35, 0.347, 0.344, 0.341, 0.339, 0.336, 0.334, 0.332, 0.329, 0.327, 0.325, 0.323, 0.321, 0.32, 0.318, 0.316, 0.315, 0.313, 0.311, 0.31, 0.308, 0.307, 0.306, 0.304, 0.303, 0.302, 0.301, 0.299, 0.298, 0.297, 0.296, 0.295, 0.294, 0.293, 0.292, 0.291, 0.29, 0.289, 0.288, 0.287, 0.286, 0.285, 0.285, 0.284, 0.283, 0.282, 0.281, 0.281, 0.28, 0.279, 0.278, 0.278, 0.277, 0.276, 0.276, 0.275, 0.274, 0.274, 0.273, 0.272, 0.272, 0.271, 0.271, 0.27, 0.269, 0.269, 0.268, 0.268, 0.267, 0.267, 0.266, 0.266, 0.265, 0.265, 0.264, 0.264, 0.263, 0.263, 0.262, 0.262, 0.262, 0.261, 0.261, 0.26, 0.26, 0.259, 0.259 },
+     {0.556, 0.536, 0.519, 0.504, 0.491, 0.48, 0.469, 0.46, 0.451, 0.443, 0.436, 0.429, 0.423, 0.418, 0.412, 0.407, 0.403, 0.398, 0.394, 0.39, 0.386, 0.383, 0.38, 0.376, 0.373, 0.37, 0.368, 0.365, 0.363, 0.36, 0.358, 0.356, 0.353, 0.351, 0.349, 0.347, 0.345, 0.344, 0.342, 0.34, 0.339, 0.337, 0.335, 0.334, 0.332, 0.331, 0.33, 0.328, 0.327, 0.326, 0.325, 0.323, 0.322, 0.321, 0.32, 0.319, 0.318, 0.317, 0.316, 0.315, 0.314, 0.313, 0.312, 0.311, 0.31, 0.309, 0.308, 0.307, 0.307, 0.306, 0.305, 0.304, 0.304, 0.303, 0.302, 0.301, 0.301, 0.3, 0.299, 0.299, 0.298, 0.297, 0.297, 0.296, 0.295, 0.295, 0.294, 0.294, 0.293, 0.293, 0.292, 0.291, 0.291, 0.29, 0.29, 0.289, 0.289, 0.288, 0.288, 0.287, 0.287, 0.286, 0.286, 0.285, 0.285, 0.285, 0.284, 0.284, 0.283, 0.283 },
+     {0.586, 0.566, 0.549, 0.534, 0.521, 0.51, 0.499, 0.489, 0.481, 0.473, 0.466, 0.459, 0.453, 0.447, 0.441, 0.436, 0.432, 0.427, 0.423, 0.419, 0.415, 0.412, 0.408, 0.405, 0.402, 0.399, 0.396, 0.393, 0.391, 0.388, 0.386, 0.384, 0.381, 0.379, 0.377, 0.375, 0.373, 0.371, 0.37, 0.368, 0.366, 0.364, 0.363, 0.361, 0.36, 0.358, 0.357, 0.356, 0.354, 0.353, 0.352, 0.35, 0.349, 0.348, 0.347, 0.346, 0.345, 0.344, 0.343, 0.342, 0.341, 0.34, 0.339, 0.338, 0.337, 0.336, 0.335, 0.334, 0.333, 0.332, 0.332, 0.331, 0.33, 0.329, 0.329, 0.328, 0.327, 0.326, 0.326, 0.325, 0.324, 0.324, 0.323, 0.322, 0.322, 0.321, 0.32, 0.32, 0.319, 0.319, 0.318, 0.318, 0.317, 0.316, 0.316, 0.315, 0.315, 0.314, 0.314, 0.313, 0.313, 0.312, 0.312, 0.311, 0.311, 0.31, 0.31, 0.31, 0.309, 0.309 }};
 
   if (t_drift < 0)
     return true;
@@ -251,6 +213,11 @@ Bool_t ds50analysis::large_max_s1_frac(Double_t const total_s1, Double_t const t
   // Extract the corresponding threshold value
   double threshold = max_s1_frac_thresholds[t_drift_slice][total_s1_slice];
 
+  // If 350us < tdrift < 370us, use finer drift time slices.
+  if (t_drift >= 350 && t_drift < 370) {
+    t_drift_slice = TMath::Floor((t_drift - 350)/5);
+    threshold = max_s1_frac_tdrift_350_370us_thresholds[t_drift_slice][total_s1_slice];
+  }
 
   // Decide whether this event passes
   if (max_s1/total_s1 > threshold)
@@ -265,7 +232,7 @@ Bool_t AddFile2Chain(TString Inputfilelist, TChain &tpcChain, TChain &odChain){
   Bool_t IsChained(false);
   ifstream inputStream(Inputfilelist.Data());
   if (!inputStream.is_open()) {
-    cout << "can not open list file"<< endl;
+    cout << "can not open list file : " << Inputfilelist << endl;
     return false;
   }
   cout<<"Opening file list: "<<Inputfilelist.Data()<<endl;

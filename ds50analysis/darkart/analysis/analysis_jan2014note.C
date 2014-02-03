@@ -76,7 +76,7 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
   const Double_t t_drift_delta = 10; //[us]
   const Double_t t_s2_s3_sep = 381.; //[us]
   const Double_t t_s2_s3_sep_width = 9.; //[us]
-  const Double_t electron_lifetime = 3338; //[us]
+  const Double_t electron_lifetime = 4733; //3338; //[us]
   const Int_t N_CHANNELS = 38;
     
   Int_t tpc_events = tpc_chain->GetEntries();
@@ -121,26 +121,27 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
   TH2F* s1_max_peak_time_hist       = new TH2F("s1_max_peak_time_hist", "Max Peak Arrival Time vs Maximum S1",
                                                10000, 0, 10000, 100, 0, 8.0);
   TH2F* t_drift_s1_corr_hist        = new TH2F("t_drift_s1_corr_hist", "Drift time vs S1 (corrected for z-dependence)",
-                                               1000, 0, 6000, 400, 0., 400.);
+                                               6000, 0, 6000, 400, 0., 400.);
   TH2F* s2_s1_corr_hist             = new TH2F("s2_s1_corr_hist", "S2 vs S1 (corrected for z-dependence)",
-                                               1000, 0, 6000, 5000, 0, 50000);
+                                               6000, 0, 6000, 5000, 0, 50000);
   TH2F* logs2s1_corr_s1_corr_hist   = new TH2F("s2s1_corr_s1_corr_hist", "Log(S2/S1) vs S1 S1 (corrected for z-dependence)",
-                                               1000, 0, 6000, 200, -1, 3);
+                                               6000, 0, 6000, 200, -1, 3);
   TH1F* total_livetime              = new TH1F("total_livetime", "total_livetime", 1, 0, 1);
 
-  const int n_hists = 40;
+  const int n_hists = 70;
+  const int s1_slice_width = 10;
   TH2F** logs2s1_corr_f90_hist = new TH2F*[n_hists];
   TH2F** max_frac_t_drift_hist = new TH2F*[n_hists];
   for (int i = 0; i < n_hists; i++)
     {
       std::ostringstream name, title;
       name<<"logs2s1_f90_hist_"<<i;
-      title<<"Log(S2/S1) vs F90 for S1(corr) above "<<i*5<<" p.e.; F90; Log(S2/S1)";
+      title<<"Log(S2/S1) (both corr.) vs F90 for "<<i*s1_slice_width<<" < total_s1_corr [p.e.] < "<<(i+1)*s1_slice_width<<"; F90; Log(S2/S1)";
       logs2s1_corr_f90_hist[i] = new TH2F(name.str().c_str(), title.str().c_str(), 120, 0.0, 1.2, 200, -1, 3);
 
       name.str("");title.str("");
       name<<"max_frac_t_drift_hist_"<<i;
-      title<<"Max S1 Fraction vs Drift time for "<<(i)*5<<" < S1 [p.e.] < "<<(i+1)*5;
+      title<<"Max S1 Fraction vs Drift time for "<<(i)*s1_slice_width<<" < S1 [p.e.] < "<<(i+1)*s1_slice_width;
       max_frac_t_drift_hist[i] = new TH2F(name.str().c_str(), title.str().c_str(), 400, 0, 400, 100, 0, 1.0);
     }
     
@@ -177,10 +178,6 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
         cout << "Event=" << event->event_info.event_id<<" has LOWER # of Channels"<<endl;
         continue;
       }
-      
-      //Make sure the event is not saturated
-      if (event->event_info.saturated == true)
-        continue;
         
       //Make sure the baseline was found on the sum channel
       if (event->sumchannel.baseline.found_baseline == false)
@@ -231,7 +228,18 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
       ///////////////////////////
       //  APPLY ANALYSIS CUTS  //
       ///////////////////////////
-      
+
+#define S1SATURATION
+#ifndef S1SATURATION
+     //Make sure the event is not saturated
+      if (event->event_info.saturated == true)
+        continue;
+#else
+      //Make sure the s1 is not saturated
+      if (event->pulses[s1_pulse_id].param.peak_saturated == true)
+        continue;
+#endif
+
       //Make sure the S1 pulse is where you expect in the trigger window
       if (s1_start_time < -0.25 || s1_start_time > -0.18 )
         continue;
@@ -271,9 +279,9 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
       
       for (int j = 0; j < n_hists; j++)
         {
-          if (total_s1_corr > j*5 && total_s1_corr<500.)
+          //if (total_s1_corr > j*5 && total_s1_corr<500.)
+          if (total_s1_corr > j*s1_slice_width && total_s1_corr <= (j+1)*s1_slice_width) {
             logs2s1_corr_f90_hist[j]->Fill(total_f90, TMath::Log10(s2_over_s1_corr));
-          if (total_s1_corr >= j*5 && total_s1_corr < (j+1)*5){
             max_frac_t_drift_hist[j]->Fill(t_drift, max_s1_frac);
             if(total_s1>60. && total_s1<70. && t_drift>70. && t_drift<250 && max_s1_frac>0.2){
               cout << "runid="<< event->event_info.run_id
