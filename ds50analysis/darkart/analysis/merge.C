@@ -81,8 +81,8 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
   const Double_t t_drift_min = 10.; //[us]
   const Double_t t_drift_max = 373.3; //[us]
   const Double_t t_drift_delta = 10; //[us]
-  const Double_t t_s2_s3_sep = 381.; //[us]
-  const Double_t t_s2_s3_sep_width = 9.; //[us]
+  const Double_t t_s3_sep_min = 372.; //372.; //[us]
+  const Double_t t_s3_sep_max = 400.; //390.; //[us]
   const Double_t electron_lifetime = 4733; //3338; //3076; (old value) //[us]
   const Int_t N_CHANNELS = 38;
 
@@ -114,18 +114,21 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
   const int od_max_nclusters = 40;
   Float_t lsv_cluster_charge[od_max_nclusters];
   Float_t lsv_cluster_start[od_max_nclusters];
+  Float_t wt_total_charge = 0;
   Float_t lsv_cluster_height[od_max_nclusters];
   Float_t lsv_cluster_multiplicity[od_max_nclusters];
   UInt_t od_gps_fine_time_counter = 0;
   UShort_t od_pps_counter = 0;
   const Double_t max_lsv_charge_thresh = 150;
   const Double_t prompt_lsv_charge_thresh = 3;
+  const Double_t wt_total_charge_thresh = 200;
 
   od_chain->SetBranchAddress("run", &od_run);
   od_chain->SetBranchAddress("event_number", &od_event);
   od_chain->SetBranchAddress("lsv_n_clusters", &lsv_nclusters);
   od_chain->SetBranchAddress("lsv_cluster_fixed_width_charge", lsv_cluster_charge);
   od_chain->SetBranchAddress("lsv_cluster_start_ns", lsv_cluster_start);
+  od_chain->SetBranchAddress("wt_total_spe_charge", &wt_total_charge);
   od_chain->SetBranchAddress("lsv_cluster_height", lsv_cluster_height);
   od_chain->SetBranchAddress("lsv_cluster_max_multiplicity", lsv_cluster_multiplicity);
   od_chain->SetBranchAddress("gps_fine_time_counter", &od_gps_fine_time_counter);
@@ -155,6 +158,10 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
                                                5000, 0, 500000);
   TH1F* total_s2_corr_hist          = new TH1F("total_s2_corr_hist", "S2 Spectrum (corrected for z-dependence); total_s2_corr [PE]",
                                                5000, 0, 500000);
+  TH1F* total_s1_90_hist            = new TH1F("total_s1_90_hist", "S1_{90} Spectrum; S1_{90} [PE]",
+                                               2000, 0, 2000);
+  TH1F* total_s1_90_corr_hist       = new TH1F("total_s1_90_corr_hist", "S1_{90} Spectrum (corrected for z-dependence); S1_{90} (corr) [PE]",
+                                               2000, 0, 2000);
   TH1F* total_f90_hist              = new TH1F("total_f90_hist", "F90 Distribution; F90",
                                                110, 0, 1.3);
   TH1F* total_f90_prompt_cut_hist   = new TH1F("total_f90_prompt_cut_hist", "F90 Distribution, with Prompt Cut; F90",
@@ -204,6 +211,9 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
   TH2F* total_s1_f90_max_lsv_cut_hist          = new TH2F("total_s1_f90_max_lsv_cut_hist",
                                                           "F90 vs S1, TPC cuts, max LSV cut; S1 [PE]; F90",
                                                           10000, 0, 10000, 130, 0, 1.3);
+  TH2F* total_s1_f90_after_lsv_wt_cuts_hist    = new TH2F("total_s1_f90_after_lsv_wt_cuts_hist",
+                                                          "F90 vs S1, TPC cuts, TPC and LSV and WT cuts; S1 [PE]; F90",
+                                                          10000, 0, 10000, 130, 0, 1.3);
   TH2F* total_s1_corr_f90_after_lsv_cuts_hist  = new TH2F("total_s1_corr_f90_after_lsv_cuts_hist",
                                                           "F90 vs S1 (corrected for z-dependence), TPC and LSV cuts; total_s1_corr [PE]; F90",
                                                           10000, 0, 10000, 130, 0, 1.3);
@@ -218,6 +228,9 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
                                                           10000, 0, 10000, 130, 0, 1.3);
   TH2F* total_s1_corr_f90_max_lsv_cut_c_hist   = new TH2F("total_s1_corr_f90_max_lsv_cut_c_hist",
                                                           "F90 vs S1 (corrected for z-dependence), TPC cuts, NOT passing max LSV cut; total_s1_corr [PE]; F90",
+                                                          10000, 0, 10000, 130, 0, 1.3);
+  TH2F* total_s1_corr_f90_after_lsv_wt_cuts_hist=new TH2F("total_s1_corr_f90_after_lsv_wt_cuts_hist",
+                                                          "F90 vs S1 (corrected for z-dependence), TPC and LSV and WT cuts; total_s1_corr [PE]; F90",
                                                           10000, 0, 10000, 130, 0, 1.3);
   TH1F* total_s1_corr_prompt_lsv_cut_hist      = new TH1F("total_s1_corr_prompt_lsv_cut_hist",
                                                           "S1 (corrected for z-dependence), TPC cuts, prompt LSV cut; total_s1_corr [PE]",
@@ -295,9 +308,16 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
 	  std::cout << "\tOpening TPC Run " << old_tpc_run << " and OD Run " << old_od_run << std::endl;
 	}
         
+      Int_t run_id = event->event_info.run_id;
+      Double_t acquiWindow = (1.*event->sumchannel.channel.nsamps)/(1.*event->sumchannel.channel.sample_rate);
       if (n % 10000 == 0)
 	{
 	  std::cout<<"Processing\t TPC Event: "<<n<<"/"<<tpc_events<<std::endl;
+
+
+      if(n==0)std::cout<<"acquisition window [us]: "<<acquiWindow<<std::endl;
+
+//      if(acquiWindow < 565 || acquiWindow > 575)std::cout<<"Livetime cut does not work with this acquisition window!!!!"<<std::endl;
 	}
 
       
@@ -353,7 +373,8 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
           LivetimeTotal+=event->event_info.live_time_20ns*20.*1.e-9; // in second
           InhibitTimeTotal+=event->event_info.incremental_inhibit_time_20ns*20.*1.e-9; // in second
         }// This should be before any event cuts!!
-        
+      else continue; // not include long livetime runs
+
 
 
       /////////////////////////
@@ -368,12 +389,15 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
       Double_t max_lsv_charge = GetMaxLSVClusterCharge(lsv_nclusters, lsv_cluster_charge); 
 
       
-      if ( !(max_lsv_charge > max_lsv_charge_thresh || prompt_lsv_charge > prompt_lsv_charge_thresh) ) {
+      if ( !(max_lsv_charge > max_lsv_charge_thresh || prompt_lsv_charge > prompt_lsv_charge_thresh || wt_total_charge > wt_total_charge_thresh ) ) {
         if(event->event_info.live_time_20ns*20.*1.e-9 < 1.)
           { //long Livetime event cut
             LivetimeAfterVetoCuts+=event->event_info.live_time_20ns*20.*1.e-9; // in second
           }// This should be before any event cuts!!
+        else continue; // not include long livetime runs
       }
+
+      //if ( wt_total_charge > 0 ) continue;
 
       // Check for expected number of channels
       if ((int)event->channels.size() != N_CHANNELS){
@@ -387,7 +411,7 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
         
       //PULSE IDENTIFICATION
       Int_t n_phys_pulses = -1, s1_pulse_id = -1, s2_pulse_id = -1;
-      ds50analysis::identify_pulses(event, n_phys_pulses, s1_pulse_id, s2_pulse_id, t_s2_s3_sep, t_s2_s3_sep_width);
+      ds50analysis::identify_pulses(event, n_phys_pulses, s1_pulse_id, s2_pulse_id, t_s3_sep_min, t_s3_sep_max);
       
       //Make sure there are 2 pulses
       if (n_phys_pulses != 2)
@@ -402,6 +426,7 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
         
       Double_t total_s1_corr = total_s1*ds50analysis::s1_corr_factor(t_drift_max, t_drift);
       Double_t total_s1_90 = event->pulses[s1_pulse_id].param.f90*event->pulses[s1_pulse_id].param.npe;
+      Double_t total_s1_90_corr = total_s1_90*ds50analysis::s1_corr_factor(t_drift_max, t_drift);
       Double_t total_s1_20 = event->pulses[s1_pulse_id].param.f_param[1]*event->pulses[s1_pulse_id].param.npe;
       Double_t total_f90 = total_s1_90/total_s1;
       Double_t total_f20 = total_s1_20/total_s1;
@@ -429,6 +454,12 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
       ///////////////////////////
       //  APPLY ANALYSIS CUTS  //
       ///////////////////////////
+
+      //Remove events triggered on S3
+      Double_t dt_usec = (event->event_info.live_time_20ns + event->event_info.incremental_inhibit_time_20ns)*20.*1.e-3; //time from previous trigger
+      Double_t inhibit_window_us = (acquiWindow > 150.)? (acquiWindow - 60.)*2. + 50. : 0.; // in us // 60 for large S2 signal after max drift time. 50 for buffer for S3
+      if (dt_usec < inhibit_window_us)
+        continue;
 
 #define S1SATURATION
 #ifndef S1SATURATION
@@ -472,9 +503,9 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
       // Cut on large max_s1_frac. Threshold is defined bin by bin.
       if (ds50analysis::large_max_s1_frac(total_s1, t_drift, max_s1))
         continue;
-
      
 
+      // Apply veto cuts and fill subset of histos separately
       if (max_lsv_charge <= max_lsv_charge_thresh) {
         total_s1_f90_max_lsv_cut_hist->Fill(total_s1, total_f90);
         total_s1_corr_f90_max_lsv_cut_hist->Fill(total_s1_corr, total_f90);
@@ -496,6 +527,10 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
       if (max_lsv_charge <= max_lsv_charge_thresh && prompt_lsv_charge <= prompt_lsv_charge_thresh) {
         total_s1_f90_after_lsv_cuts_hist->Fill(total_s1, total_f90);
         total_s1_corr_f90_after_lsv_cuts_hist->Fill(total_s1_corr, total_f90);
+        if ( wt_total_charge <= wt_total_charge_thresh ) {
+          total_s1_f90_after_lsv_wt_cuts_hist->Fill(total_s1, total_f90);
+          total_s1_corr_f90_after_lsv_wt_cuts_hist->Fill(total_s1_corr, total_f90);
+        }
       }
       
       ///////////////////////
@@ -523,6 +558,8 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
       total_s1_corr_hist          ->Fill(total_s1_corr);
       total_s2_hist               ->Fill(total_s2);
       total_s2_corr_hist          ->Fill(total_s2_corr);
+      total_s1_90_hist            ->Fill(total_s1_90);
+      total_s1_90_corr_hist       ->Fill(total_s1_90_corr);
       total_f90_hist              ->Fill(total_f90);
       total_s1_f90_hist           ->Fill(total_s1, total_f90);
       total_s1_corr_f90_hist      ->Fill(total_s1_corr, total_f90);
@@ -577,6 +614,8 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
   total_s1_corr_hist->Write();
   total_s2_hist->Write();
   total_s2_corr_hist->Write();
+  total_s1_90_hist->Write();
+  total_s1_90_corr_hist->Write();
   s2_s1_corr_hist->Write();
   total_f90_hist->Write();
   total_f90_prompt_cut_hist->Write();
@@ -601,11 +640,13 @@ void LoopOverChain(TChain* tpc_chain, TChain *od_chain, TString outFileName)
   total_s1_f90_after_lsv_cuts_hist->Write();
   total_s1_f90_prompt_lsv_cut_hist->Write();
   total_s1_f90_max_lsv_cut_hist->Write();
+  total_s1_f90_after_lsv_wt_cuts_hist->Write();
   total_s1_corr_f90_after_lsv_cuts_hist->Write();
   total_s1_corr_f90_prompt_lsv_cut_hist->Write();
   total_s1_corr_f90_max_lsv_cut_hist->Write();
   total_s1_corr_f90_prompt_lsv_cut_c_hist->Write();
   total_s1_corr_f90_max_lsv_cut_c_hist->Write();
+  total_s1_corr_f90_after_lsv_wt_cuts_hist->Write();
   total_s1_corr_prompt_lsv_cut_hist->Write();
   total_s1_corr_prompt_lsv_cut_c_hist->Write();
   

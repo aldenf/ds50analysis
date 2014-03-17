@@ -46,7 +46,6 @@ namespace ds50analysis {
                  Int_t & max_s1_chan, Double_t & max_s1,
                  Int_t & max_s2_chan, Double_t & max_s2);
 
-
   // Cut on large max_s1_frac. Threshold is defined bin by bin.
   Bool_t large_max_s1_frac(Double_t const total_s1, Double_t const t_drift, Double_t const max_s1);
 
@@ -76,7 +75,7 @@ Double_t ds50analysis::s1_corr_factor(Double_t t_drift_max, Double_t t_drift)
 
 void ds50analysis::identify_pulses(EventData* event,
                                    Int_t & n_phys_pulses, Int_t & s1_pulse_id, Int_t & s2_pulse_id,
-                                   Double_t t_drift_max, Double_t t_drift_delta)
+                                   Double_t t_drift_min, Double_t t_drift_max)
 {
   if (event->sumchannel.pulses.size() == 0)
     {
@@ -95,15 +94,24 @@ void ds50analysis::identify_pulses(EventData* event,
       s1_pulse_id = 0;
       s2_pulse_id = 1;
     }
-  else if (event->sumchannel.pulses.size() == 3
-           && std::fabs(event->sumchannel.pulses[2].pulse.start_time
-                        - event->sumchannel.pulses[1].pulse.start_time
-                        - t_drift_max) < t_drift_delta)
+  else if (event->sumchannel.pulses.size() == 3)
     {
-      //Assume first pulse is S1, second is S2 and third is S3 ... for now
-      n_phys_pulses = 2;
-      s1_pulse_id = 0;
-      s2_pulse_id  = 1;
+      Double_t t_drift2to3 = event->sumchannel.pulses[2].pulse.start_time - event->sumchannel.pulses[1].pulse.start_time;
+/*      Double_t t_drift1to3 = event->sumchannel.pulses[2].pulse.start_time - event->sumchannel.pulses[0].pulse.start_time;
+      if (t_drift1to3 > t_drift_min && t_drift1to3 <= t_drift_max){
+          //Assume first pulse is S1, second is S2 and third is S3 associated to S1 ... for now
+          n_phys_pulses = 2;
+          s1_pulse_id = 0;
+          s2_pulse_id  = 1;
+      } else */
+      if (t_drift2to3 > t_drift_min && t_drift2to3 <= t_drift_max){
+          //Assume first pulse is S1, second is S2 and third is S3 associated to S2 ... for now
+          n_phys_pulses = 2;
+          s1_pulse_id = 0;
+          s2_pulse_id  = 1;
+      } else {
+          n_phys_pulses = event->sumchannel.pulses.size();
+      }
     }
   else
     { //We don't know how many physical pulses - just set to total number of pulses for now
@@ -134,8 +142,6 @@ void ds50analysis::max_s1_s2(EventData* event, Int_t const s1_pulse_id, Int_t co
     }
   
 }
-
-
 
 Bool_t ds50analysis::large_max_s1_frac(Double_t const total_s1, Double_t const t_drift, Double_t const max_s1)
 {
@@ -227,7 +233,6 @@ Bool_t ds50analysis::large_max_s1_frac(Double_t const total_s1, Double_t const t
 }
 
 
-  
 Bool_t AddFile2Chain(TString Inputfilelist, TChain &tpcChain, TChain &odChain){
   Bool_t IsChained(false);
   ifstream inputStream(Inputfilelist.Data());

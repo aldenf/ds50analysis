@@ -74,8 +74,8 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
   const Double_t t_drift_min = 10.; //[us]
   const Double_t t_drift_max = 373.3; //[us]
   const Double_t t_drift_delta = 10; //[us]
-  const Double_t t_s2_s3_sep = 381.; //[us]
-  const Double_t t_s2_s3_sep_width = 9.; //[us]
+  const Double_t t_s3_sep_min = 372.; //372.; //[us]
+  const Double_t t_s3_sep_max = 400.; //390.; //[us]
   const Double_t electron_lifetime = 4733; //3338; //[us]
   const Int_t N_CHANNELS = 38;
     
@@ -108,6 +108,9 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
   TH1F* total_s1_corr_hist          = new TH1F("total_s1_corr_hist", "S1 Spectrum (corrected for z-dependence)", 10000, 0, 10000);
   TH1F* total_s2_hist               = new TH1F("total_s2_hist", "S2 Spectrum", 5000, 0, 500000);
   TH1F* total_s2_corr_hist          = new TH1F("total_s2_corr_hist", "S2 Spectrum (corrected for z-dependence)", 5000, 0, 500000);
+  TH1F* total_s1_90_hist            = new TH1F("total_s1_90_hist", "S1_{90} Spectrum; S1_{90} [PE]", 2000, 0, 2000);
+  TH1F* total_s1_90_corr_hist       = new TH1F("total_s1_90_corr_hist", "S1_{90} Spectrum (corrected for z-dependence); S1_{90} (corr) [PE]",
+                                               2000, 0, 2000);
   TH1F* total_f90_hist              = new TH1F("total_f90_hist", "F90 Distribution", 110, 0, 1.3);
   TH2F* total_s1_f90_hist           = new TH2F("total_s1_f90_hist", "F90 vs S1; S1 [p.e.]; F90", 10000, 0, 10000, 130, 0, 1.3);
   TH2F* total_s1_corr_f90_hist      = new TH2F("total_s1_corr_f90_hist", "F90 vs S1 (corrected for z-dependence); S1 [p.e.]; F90",
@@ -157,15 +160,25 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
         
       //Load the event
       tpc_chain->GetEntry(n);
-        
+
+      Int_t run_id = event->event_info.run_id;
+      Double_t acquiWindow = (1.*event->sumchannel.channel.nsamps)/(1.*event->sumchannel.channel.sample_rate);
       if ( n % 10000 == 0)
+      {
         std::cout<<"Processing Event: "<<n<<"/"<<tpc_events<<std::endl;
         
+
+        if(n==0)std::cout<<"acquisition window [us]: "<<acquiWindow<<std::endl;
+
+//        if(acquiWindow < 565 || acquiWindow > 575)std::cout<<"Livetime cut does not work with this acquisition window!!!!"<<std::endl;
+      }
+
       if(event->event_info.live_time_20ns*20.*1.e-9 < 1.)
         { //long Livetime event cut
           LivetimeTotal+=event->event_info.live_time_20ns*20.*1.e-9; // in second
           InhibitTimeTotal+=event->event_info.incremental_inhibit_time_20ns*20.*1.e-9; // in second
         }// This should be before any event cuts!!
+      else continue; // not include long livetime runs
         
 
 
@@ -185,7 +198,7 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
         
       //PULSE IDENTIFICATION
       Int_t n_phys_pulses = -1, s1_pulse_id = -1, s2_pulse_id = -1;
-      ds50analysis::identify_pulses(event, n_phys_pulses, s1_pulse_id, s2_pulse_id, t_s2_s3_sep, t_s2_s3_sep_width);
+      ds50analysis::identify_pulses(event, n_phys_pulses, s1_pulse_id, s2_pulse_id, t_s3_sep_min, t_s3_sep_max);
 
       
       //Make sure there are 2 pulses
@@ -201,6 +214,7 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
         
       Double_t total_s1_corr = total_s1*ds50analysis::s1_corr_factor(t_drift_max, t_drift);
       Double_t total_s1_90 = event->pulses[s1_pulse_id].param.f90*event->pulses[s1_pulse_id].param.npe;
+      Double_t total_s1_90_corr = total_s1_90*ds50analysis::s1_corr_factor(t_drift_max, t_drift);
       Double_t total_s1_20 = event->pulses[s1_pulse_id].param.f_param[1]*event->pulses[s1_pulse_id].param.npe;
       Double_t total_f90 = total_s1_90/total_s1;
       Double_t total_f20 = total_s1_20/total_s1;
@@ -228,6 +242,12 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
       ///////////////////////////
       //  APPLY ANALYSIS CUTS  //
       ///////////////////////////
+
+      //Remove events triggered on S3
+      Double_t dt_usec = (event->event_info.live_time_20ns + event->event_info.incremental_inhibit_time_20ns)*20.*1.e-3; //time from previous trigger
+      Double_t inhibit_window_us = (acquiWindow > 150.)? (acquiWindow - 60.)*2. + 50. : 0.; // in us // 60 for large S2 signal after max drift time. 50 for buffer for S3
+      if (dt_usec < inhibit_window_us)
+        continue;
 
 #define S1SATURATION
 #ifndef S1SATURATION
@@ -273,6 +293,7 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
       if (ds50analysis::large_max_s1_frac(total_s1, t_drift, max_s1))
         continue;
 
+
       ///////////////////////
       //  FILL HISTOGRAMS  //
       ///////////////////////
@@ -298,6 +319,8 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
       total_s1_corr_hist          ->Fill(total_s1_corr);
       total_s2_hist               ->Fill(total_s2);
       total_s2_corr_hist          ->Fill(total_s2_corr);
+      total_s1_90_hist            ->Fill(total_s1_90);
+      total_s1_90_corr_hist       ->Fill(total_s1_90_corr);
       total_f90_hist              ->Fill(total_f90);
       total_s1_f90_hist           ->Fill(total_s1, total_f90);
       total_s1_corr_f90_hist      ->Fill(total_s1_corr, total_f90);
@@ -327,6 +350,8 @@ void LoopOverChain(TChain* tpc_chain, TString outFileName)
   total_s1_corr_hist->Write();
   total_s2_hist->Write();
   total_s2_corr_hist->Write();
+  total_s1_90_hist->Write();
+  total_s1_90_corr_hist->Write();
   s2_s1_corr_hist->Write();
   total_f90_hist->Write();
   total_s1_f90_hist->Write();
